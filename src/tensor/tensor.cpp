@@ -164,27 +164,115 @@ void Tensor::debug() const {
 }
 
 bool Tensor::isContiguous() const {
-    TO_BE_IMPLEMENTED();
+    // TO_BE_IMPLEMENTED();
+    // Check if the tensor is contiguous
+    // 比较 strides 是否等于每一层的元素大小的乘积
+    ptrdiff_t expected_stride = 1;
+    int ndim = static_cast<int>(this->ndim());
+    for (int i = ndim - 1; i >= 0; i--) {
+        if (this->strides()[i] != expected_stride) {
+            return false;
+        }
+        expected_stride *= this->shape()[i];
+    }
     return true;
 }
 
 tensor_t Tensor::permute(const std::vector<size_t> &order) const {
-    TO_BE_IMPLEMENTED();
-    return std::shared_ptr<Tensor>(new Tensor(_meta, _storage));
+    // TO_BE_IMPLEMENTED();
+    // 检查 order 是否合法
+    CHECK_ARGUMENT(order.size() == this->ndim(), 
+    "Tensor::permute: The order must have the same number of elements as the tensor's number of dimensions.");
+    // 检查 order 是否合法
+    std::vector<int8_t> visited(this->ndim(), 0);
+    for (size_t i = 0; i < this->ndim(); i++) {
+        CHECK_ARGUMENT(!visited[order[i]] && order[i] < this->ndim(), 
+        "Tensor::permute: The order must be a permutation of the tensor's dimensions.");
+        visited[order[i]] = 1;
+    }
+    // 计算新的 shape 和 strides
+    std::vector<size_t> new_shape(this->ndim(), 0);
+    std::vector<ptrdiff_t> new_strides(this->ndim(), 0);
+    for (size_t i = 0; i < this->ndim(); i++) {
+        new_shape[i] = this->shape()[order[i]];
+        new_strides[i] = this->strides()[order[i]];
+    }
+    //创建新的 TensorMeta
+    TensorMeta new_meta = this->_meta;
+    new_meta.shape = new_shape;
+    new_meta.strides = new_strides;
+    return std::shared_ptr<Tensor>(new Tensor(new_meta, _storage, _offset));
 }
 
 tensor_t Tensor::view(const std::vector<size_t> &shape) const {
-    TO_BE_IMPLEMENTED();
-    return std::shared_ptr<Tensor>(new Tensor(_meta, _storage));
+    // TO_BE_IMPLEMENTED();
+    //检查是否是 contiguous
+    CHECK_ARGUMENT(
+        this -> isContiguous(),
+        "Tensor::view: The tensor must be contiguous."
+    );
+    // 检查新的 shape 是否与原 shape 兼容
+    size_t new_numel = 1;
+    for (size_t i = 0; i < shape.size(); i++) {
+        new_numel *= shape[i];
+    }
+    CHECK_ARGUMENT(
+        new_numel == this->numel(),
+        "Tensor::view: The new shape must have the same number of elements as the original shape."
+    );
+    // 检查新的 shape 是否与原 shape 兼容
+    // 计算新的 strides
+    std::vector<ptrdiff_t> new_strides(shape.size(), 0);
+    new_strides[shape.size() - 1] = 1;
+    int shape_size = static_cast<int>(shape.size());
+    for (int i = shape_size - 2; i >= 0; i--) {
+        new_strides[i] = new_strides[i + 1] * shape[i + 1];
+    }
+    //创建新的 TensorMeta
+    TensorMeta new_meta = this->_meta;
+    new_meta.shape = std::move(shape);
+    new_meta.strides = std::move(new_strides);
+
+    return std::shared_ptr<Tensor>(new Tensor(new_meta, _storage, _offset));
 }
 
 tensor_t Tensor::slice(size_t dim, size_t start, size_t end) const {
-    TO_BE_IMPLEMENTED();
-    return std::shared_ptr<Tensor>(new Tensor(_meta, _storage));
+    // TO_BE_IMPLEMENTED();
+    auto ndim = this->ndim();
+    // 检查 dim 是否合法
+    CHECK_ARGUMENT(
+        dim < ndim,
+        "Tensor::slice: The dimension must be less than the number of dimensions."
+    );
+    // 检查 start 和 end 是否合法
+    CHECK_ARGUMENT(
+        start <= end && end <= this->shape()[dim],
+        "Tensor::slice: The start and end indices must be within the bounds of the dimension."
+    );
+
+    //new meta
+    TensorMeta new_meta = this->_meta;
+    std::vector<size_t> new_shape = this->shape();
+    new_shape[dim] = end - start;
+    new_meta.strides[dim] = this->strides()[dim];
+    new_meta.shape = std::move(new_shape);
+
+    //new offset
+    ptrdiff_t new_offset = _offset + start * this->strides()[dim] * this->elementSize();
+    return std::shared_ptr<Tensor>(new Tensor(new_meta, _storage, new_offset));
 }
 
 void Tensor::load(const void *src_) {
-    TO_BE_IMPLEMENTED();
+    // TO_BE_IMPLEMENTED();
+    if (this->deviceType() == LLAISYS_DEVICE_CPU) {
+        memcpy(this->data(), src_, this->numel() * this->elementSize());
+    } else {
+        core::context().runtime().api()->memcpy_sync(
+            this->data(),
+            src_,
+            this->numel() * this->elementSize(),
+            LLAISYS_MEMCPY_H2D);
+    }
 }
 
 tensor_t Tensor::contiguous() const {
