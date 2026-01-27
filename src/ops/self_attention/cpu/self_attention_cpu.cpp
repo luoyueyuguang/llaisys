@@ -19,13 +19,12 @@ void self_attention_(T *attn_val, const T *q, const T *k, const T *v, size_t seq
     int64_t past_len = static_cast<int64_t>(total_len) - static_cast<int64_t>(seq_len);
     past_len = std::max<int64_t>(0, past_len);
 
-    const int heads_per_kv = num_heads / nkvhead;
+    const size_t heads_per_kv = num_heads / nkvhead;
     for(size_t seq = 0; seq < seq_len; seq++){
         for(size_t head = 0; head < num_heads; head++){
             size_t kvhead = head / heads_per_kv;
-            size_t max_t = static_cast<size_t>(past_len) + seq + 1;
-            max_t = std::min(max_t, total_len);
-            for(size_t total_j = 0; total_j < max_t; total_j++){
+            size_t tend = std::min(static_cast<size_t>(past_len) + seq + 1, total_len);
+            for(size_t total_j = 0; total_j < tend; total_j++){
                 float score = 0.0f;
                 for(size_t dim = 0; dim < d; dim++){
                     size_t q_idx = seq * num_heads * d + head * d + dim;
@@ -40,11 +39,11 @@ void self_attention_(T *attn_val, const T *q, const T *k, const T *v, size_t seq
             }
              // Softmax over [0..max_t]
             float max_score = -INFINITY;
-            for (size_t t = 0; t < max_t; ++t) {
+            for (size_t t = 0; t < tend; ++t) {
                max_score = std::max(max_score, scores[t]);
             }
             float sum_exp = 0.0f;
-            for (size_t t = 0; t < max_t; ++t) {
+            for (size_t t = 0; t < tend; ++t) {
                 scores[t] = std::exp(scores[t] - max_score);
                 sum_exp += scores[t];
             }
@@ -52,7 +51,7 @@ void self_attention_(T *attn_val, const T *q, const T *k, const T *v, size_t seq
             size_t attn_idx = seq * num_heads * dv + head * dv;
             for (size_t dvi = 0; dvi < dv; ++dvi) {
                 float attn_val_ij = 0.0f;
-                for (size_t t = 0; t < max_t; ++t) {
+                for (size_t t = 0; t < tend; ++t) {
                     size_t v_idx = t * nkvhead * dv + kvhead * dv + dvi;
                     if constexpr(std::is_same_v<T, float>) {
                         attn_val_ij += scores[t] * v[v_idx];
