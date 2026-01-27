@@ -9,16 +9,39 @@ void rms_norm_(T *out, const T *in, const T *weight, size_t rows, size_t cols, f
     for (size_t i = 0; i < rows; i++) {
         float sum_sq = 0.0f;
         // #pragma unroll
-        for (size_t j = 0; j < cols; j++) {
-            float val = llaisys::utils::cast<float>(in[i * cols + j]);
-            sum_sq += val * val;
-        }
-        float rms = std::sqrt(sum_sq / static_cast<float>(cols) + eps);
-        // #pragma unroll
-        for (size_t j = 0; j < cols; j++) {
-            float val = llaisys::utils::cast<float>(in[i * cols + j]);
-            float w = llaisys::utils::cast<float>(weight[j]);
-            out[i * cols + j] = llaisys::utils::cast<T>((val / rms) * w);
+        // for (size_t j = 0; j < cols; j++) {
+        //     float val = llaisys::utils::cast<float>(in[i * cols + j]);
+        //     sum_sq += val * val;
+        // }
+        // float rms = std::sqrt(sum_sq / static_cast<float>(cols) + eps);
+        // // #pragma unroll
+        // for (size_t j = 0; j < cols; j++) {
+        //     float val = llaisys::utils::cast<float>(in[i * cols + j]);
+        //     float w = llaisys::utils::cast<float>(weight[j]);
+        //     out[i * cols + j] = llaisys::utils::cast<T>((val / rms) * w);
+        // }
+        if constexpr (std::is_same_v<T, llaisys::bf16_t> || std::is_same_v<T, llaisys::fp16_t>) {
+            for(size_t j = 0; j < cols; j++) {
+                float val = llaisys::utils::cast<float>(in[i * cols + j]);
+                sum_sq += val * val;
+            }
+            float rms = std::sqrt(sum_sq / static_cast<float>(cols) + eps);
+            for(size_t j = 0; j < cols; j++) {
+                float val = llaisys::utils::cast<float>(in[i * cols + j]);
+                float w = llaisys::utils::cast<float>(weight[j]);
+                out[i * cols + j] = llaisys::utils::cast<T>((val / rms) * w);
+            }
+        } else if constexpr (std::is_same_v<T, float>) {
+            for(size_t j = 0; j < cols; j++) {
+                float val = in[i * cols + j];
+                sum_sq += val * val;
+            }
+            float rms = std::sqrt(sum_sq / cols + eps);
+            for(size_t j = 0; j < cols; j++) {
+                float val = in[i * cols + j];
+                float w = weight[j];
+                out[i * cols + j] = llaisys::utils::cast<T>((val / rms) * w);
+            }
         }
     }
 }
