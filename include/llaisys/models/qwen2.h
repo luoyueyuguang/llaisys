@@ -2,6 +2,11 @@
 #define LLAISYS_MODELS_QWEN2_H
 
 #include "../tensor.h"
+#include "../ops.h"
+
+#include <cmath>
+
+//#define DEBUG 1
 
 __C {
     struct LlaisysQwen2Meta {
@@ -37,6 +42,6 @@ __C {
 
     __export struct LlaisysQwen2Weights *llaisysQwen2ModelWeights(struct LlaisysQwen2Model * model);
 
-    __export int64_t llaisysQwen2ModelInfer(struct LlaisysQwen2Model * model, int64_t * token_ids, size_t ntoken);
+    __export int64_t llaisysQwen2ModelInfer(struct LlaisysQwen2Model * model, int64_t * token_ids, size_t ntoken, size_t past_len);
 }
 #endif // LLAISYS_MODELS_QWEN2_H

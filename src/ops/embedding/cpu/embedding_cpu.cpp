@@ -3,12 +3,13 @@
 #include "../../../utils.hpp"
 
 #include <cmath>
+#include <cstring>
 
 template <typename T>
 void embedding_(T *out, const int64_t *index, const T *weight, size_t index_size, size_t embed_dim) {
     for (size_t i = 0; i < index_size; i++) {
         int64_t idx = index[i];
-        std::copy(weight + idx * embed_dim, weight + (idx + 1) * embed_dim, out + i * embed_dim);
+        std::memcpy(out + i * embed_dim, weight + idx * embed_dim, embed_dim * sizeof(T));
     }
 }
 

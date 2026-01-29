@@ -86,3 +86,5 @@
             }                                                    \
         }                                                        \
     } while (0)
+
+#define LOG(msg) std::cerr << "[INFO] " << msg << EXCEPTION_LOCATION_MSG << std::endl

@@ -230,8 +230,8 @@ tensor_t Tensor::view(const std::vector<size_t> &shape) const {
     }
     //创建新的 TensorMeta
     TensorMeta new_meta = this->_meta;
-    new_meta.shape = std::move(shape);
-    new_meta.strides = std::move(new_strides);
+    new_meta.shape = shape;
+    new_meta.strides = new_strides;
 
     return std::shared_ptr<Tensor>(new Tensor(new_meta, _storage, _offset));
 }
