@@ -4,6 +4,13 @@
 
 #include "../../tensor/tensor.hpp"
 
+#include "../../utils.hpp"
+
+#include <random>
+#include <vector>
+#include <algorithm>
+#include <cmath>
+
 #include "../../ops/add/op.hpp"
 #include "../../ops/argmax/op.hpp"
 #include "../../ops/embedding/op.hpp"
@@ -17,14 +24,6 @@
 //实现Qwen2的api
 
 __C{
-    /*
-    struct LlaisysQwen2Meta {
-        llaisysDataType_t dtype;
-        size_t nlayer, hs, nh, nkvh, dh, di, maxseq, voc;
-        float epsilon, theta;
-        int64_t end_token;
-    };
-    */
     struct LlaisysQwen2Model{
         LlaisysQwen2Meta meta;
         LlaisysQwen2Weights* weights;
@@ -40,7 +39,8 @@ __C{
         // size_t cached = 0;
     };
 
-    __export struct LlaisysQwen2Model *llaisysQwen2ModelCreate(const LlaisysQwen2Meta *meta, llaisysDeviceType_t device, int *device_ids, int ndevice){
+    __export struct LlaisysQwen2Model *llaisysQwen2ModelCreate(const LlaisysQwen2Meta *meta, const size_t kv_cache_size,
+        llaisysDeviceType_t device, int *device_ids, int ndevice){
         //初始化模型
         LOG("llaisysQwen2ModelCreate");
         LlaisysQwen2Model *model = new LlaisysQwen2Model();
@@ -58,7 +58,7 @@ __C{
         size_t nlayer = meta->nlayer;
         model->k_cache = new llaisysTensor_t[nlayer];
         model->v_cache = new llaisysTensor_t[nlayer];
-        size_t kv_shape[3] = {meta->maxseq, meta->nkvh, meta->dh};
+        size_t kv_shape[3] = {kv_cache_size, meta->nkvh, meta->dh};
         for(size_t i = 0; i < nlayer; i++){
             model->k_cache[i] = tensorCreate(kv_shape, 3, meta->dtype, device, device_ids[0]);
             model->v_cache[i] = tensorCreate(kv_shape, 3, meta->dtype, device, device_ids[0]);
@@ -105,7 +105,7 @@ __C{
 
         size_t mlp_down_w_shape[2] = {meta->hs, meta->di};
         size_t mlp_up_w_shape[2] = {meta->di, meta->hs};
-        size_t mlp_gate_w_shape[2] = {meta->di, meta->dh};
+        size_t mlp_gate_w_shape[2] = {meta->di, meta->hs};
         size_t mlp_norm_w_shape[1] = {meta->hs};
 
         for(size_t i = 0; i < nlayer; i++){
@@ -227,7 +227,7 @@ __C{
 
         float eps = model->meta.epsilon;
         float theta = model->meta.theta;
-        float scale = 1.0f / std::sqrt(static_cast<float>(hs));
+        float scale = 1.0f / std::sqrt(static_cast<float>(dh));
 
         size_t seqlen = ntoken;
         size_t curlen = past_len + seqlen;
@@ -235,7 +235,7 @@ __C{
         auto k_cache = model->k_cache;
         auto v_cache = model->v_cache;
 
-        std::vector<size_t> create_shape = {curlen};
+        std::vector<size_t> create_shape = {seqlen};
         //pos_ids for rope
         auto pos_ids = tensorCreate(create_shape.data(), 1, LLAISYS_DTYPE_I64, device_type, device_id);
         //fill pos_ids
@@ -247,18 +247,12 @@ __C{
         //load token_ids
         auto input_token_ids = tensorCreate(create_shape.data(), 1, LLAISYS_DTYPE_I64, device_type, device_id);
         tensorLoad(input_token_ids, token_ids);
-        // LOG("input_token_ids");
+
         //input embed
         create_shape = {seqlen, hs};
-        // return 0;
         auto input_embed = tensorCreate(create_shape.data(), 2, model->meta.dtype, device_type, device_id);
-        
-        // tensorDebug(model->weights->in_embed);
-        // return 0;
         llaisysEmbedding(input_embed, input_token_ids, model->weights->in_embed);
-        LOG("input_embed");
-        
-        // tensorDebug(input_embed);
+
 
         //transformer
         for(size_t i = 0; i < nlayer; i++){
@@ -322,8 +316,8 @@ __C{
             // tensorDebug(attn_out);
 
 
-           //o_proj
-            create_shape = {seqlen, hs};
+//o_proj
+             create_shape = {seqlen, hs};
             auto o_proj = tensorCreate(create_shape.data(), 2, model->meta.dtype, device_type, device_id);
             attn_val = tensorView(attn_val, create_shape.data(), 2);
             // LOG("attn_val");
@@ -335,7 +329,7 @@ __C{
             //residual connection
             create_shape = {seqlen, hs};
             auto mlp_layer = tensorCreate(create_shape.data(), 2, model->meta.dtype, device_type, device_id);
-            llaisysAdd(mlp_layer, attn_norm, o_proj);
+            llaisysAdd(mlp_layer, input_embed, o_proj);
             // LOG("mlp_layer");
 
             //mlp_norm
@@ -370,15 +364,15 @@ __C{
             // LOG("mlp_swiglu");
             // tensorDebug(mlp_swiglu);
 
-             //mlp_down
-            create_shape = {seqlen, hs};
+//mlp_down
+             create_shape = {seqlen, hs};
             auto mlp_down = tensorCreate(create_shape.data(), 2, model->meta.dtype, device_type, device_id);
             llaisysLinear(mlp_down, mlp_swiglu, model->weights->mlp_down_w[i], nullptr);
             // LOG("mlp_down");
             // tensorDebug(mlp_down);
 
             //residual connection
-            llaisysAdd(input_embed, mlp_layer, mlp_down);
+             llaisysAdd(input_embed, mlp_layer, mlp_down);
             // LOG("residual connection");
             // tensorDebug(mlp_layer);
 
@@ -399,12 +393,11 @@ __C{
         /*
             output
         */
-
+        LOG("It is time to output");
         //rms_norm
         create_shape = {seqlen, hs};
         auto output = tensorCreate(create_shape.data(), 2, model->meta.dtype, device_type, device_id);
         llaisysRmsNorm(output, input_embed, model->weights->out_norm_w, eps);
-        LOG("output rms_norm");
         // tensorDebug(output);
 
         
@@ -412,21 +405,17 @@ __C{
         create_shape = {seqlen, voc};
         auto output_embed = tensorCreate(create_shape.data(), 2, model->meta.dtype, device_type, device_id);
         llaisysLinear(output_embed, output, model->weights->out_embed, nullptr);
-        LOG("output_embed");
         // tensorDebug(output_embed);
 
-        //argmax
+//argmax
         auto output_ids = tensorSlice(output_embed, 0, seqlen - 1, seqlen);
 
         create_shape = {1};
         auto max_val = tensorCreate(create_shape.data(), 1, model->meta.dtype, device_type, device_id);
         auto max_ids = tensorCreate(create_shape.data(), 1, LLAISYS_DTYPE_I64, device_type, device_id);
-
         llaisysArgmax(max_ids, max_val, output_ids);
-        LOG("argmax");
-        // tensorDebug(max_ids);
 
-        int64_t token_id = *reinterpret_cast<int64_t *>(tensorGetData(max_ids));
+        int64_t token_id = *reinterpret_cast<int64_t *>(tensorGetData(max_ids));       
 
         //destroy
         tensorDestroy(pos_ids);

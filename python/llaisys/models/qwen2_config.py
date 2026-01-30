@@ -64,6 +64,7 @@ class LlaisysQwen2Model(Structure):
 def load_qwen2(lib):
     lib.llaisysQwen2ModelCreate.argtypes = [
         POINTER(LlaisysQWen2Meta),
+        c_size_t,
         llaisysDeviceType_t,
         POINTER(c_int),
         c_int,

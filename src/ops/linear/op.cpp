@@ -17,9 +17,9 @@ void linear(tensor_t out, tensor_t in, tensor_t weight, tensor_t bias) {
         CHECK_SAME_DTYPE(out->dtype(), bias->dtype());
     }
 
-    size_t m = in->shape()[0];
+    size_t m = out->shape()[0];
     size_t k = in->shape()[1];
-    size_t n = weight->shape()[0];
+    size_t n = out->shape()[1];
 
     if (out->deviceType() == LLAISYS_DEVICE_CPU) {
         return cpu::linear(out->data(), in->data(), weight->data(), bias ? bias->data() : nullptr, out->dtype(), m, n, k);

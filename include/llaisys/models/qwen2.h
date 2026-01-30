@@ -5,6 +5,8 @@
 #include "../ops.h"
 
 #include <cmath>
+#include <string>
+#include <sstream>
 
 //#define DEBUG 1
 
@@ -36,7 +38,8 @@ __C {
 
     struct LlaisysQwen2Model;
 
-    __export struct LlaisysQwen2Model *llaisysQwen2ModelCreate(const LlaisysQwen2Meta *meta, llaisysDeviceType_t device, int *device_ids, int ndevice);
+    __export struct LlaisysQwen2Model *llaisysQwen2ModelCreate(const LlaisysQwen2Meta *meta, const size_t kv_cache_size,
+        llaisysDeviceType_t device, int *device_ids, int ndevice);
 
     __export void llaisysQwen2ModelDestroy(struct LlaisysQwen2Model * model);
 
