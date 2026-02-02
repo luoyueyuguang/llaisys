@@ -45,6 +45,7 @@ __C {
 
     __export struct LlaisysQwen2Weights *llaisysQwen2ModelWeights(struct LlaisysQwen2Model * model);
 
+    // reference something of https://github.com/zebra-uestc/llaisys/blob/master/src/llaisys/models/qwen2.cc
     __export int64_t llaisysQwen2ModelInfer(struct LlaisysQwen2Model * model, int64_t * token_ids, size_t ntoken, size_t past_len);
 }
 #endif // LLAISYS_MODELS_QWEN2_H

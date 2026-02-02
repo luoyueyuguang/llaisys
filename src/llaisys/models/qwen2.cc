@@ -191,12 +191,9 @@ __C{
     }
 
     __export int64_t llaisysQwen2ModelInfer(struct LlaisysQwen2Model * model, int64_t * token_ids, size_t ntoken, size_t past_len){
-        /*
-            reference:https://github.com/zebra-uestc/llaisys/blob/master/src/llaisys/models/qwen2.cc\
-        */
         // TO_BE_IMPLEMENTED();
         if(model == nullptr || token_ids == nullptr || ntoken == 0){
-            std::cerr << "model or token_ids is nullptr" << std::endl;
+            LOG("model or token_ids is nullptr");
             return -1;
         }
         
@@ -204,7 +201,7 @@ __C{
         if(model -> weights->in_embed == nullptr || 
             model -> weights->out_embed == nullptr ||
             model -> weights->out_norm_w == nullptr){
-            std::cerr << "in_embed or out_embed or out_norm_w is nullptr" << std::endl;
+            LOG("in_embed or out_embed or out_norm_w is nullptr");
             return -1;
         }
 
@@ -253,142 +250,128 @@ __C{
         auto input_embed = tensorCreate(create_shape.data(), 2, model->meta.dtype, device_type, device_id);
         llaisysEmbedding(input_embed, input_token_ids, model->weights->in_embed);
 
+        auto attn_norm = tensorCreate(create_shape.data(), 2, model->meta.dtype, device_type, device_id);
+        
+        create_shape = {seqlen, nh, dh};
+        auto q_rope = tensorCreate(create_shape.data(), 3, model->meta.dtype, device_type, device_id);
+        
+        create_shape = {seqlen, nh, dh};
+        auto attn_val = tensorCreate(create_shape.data(), 3, model->meta.dtype, device_type, device_id);
+       
+        create_shape = {seqlen, hs};
+        auto mlp_layer = tensorCreate(create_shape.data(), 2, model->meta.dtype, device_type, device_id);
+        create_shape = {seqlen, hs};
+        auto mlp_norm = tensorCreate(create_shape.data(), 2, model->meta.dtype, device_type, device_id);
+        create_shape = {seqlen, di};
+        auto mlp_gate = tensorCreate(create_shape.data(), 2, model->meta.dtype, device_type, device_id);
+       
+        create_shape = {seqlen, di};
+        auto mlp_swiglu = tensorCreate(create_shape.data(), 2, model->meta.dtype, device_type, device_id);
+       
+        create_shape = {seqlen, hs};
+        auto o_proj = tensorCreate(create_shape.data(), 2, model->meta.dtype, device_type, device_id);
 
+        create_shape = {seqlen, di};
+        auto mlp_up = tensorCreate(create_shape.data(), 2, model->meta.dtype, device_type, device_id);
+
+        create_shape = {seqlen, hs};
+        auto mlp_down = tensorCreate(create_shape.data(), 2, model->meta.dtype, device_type, device_id);
+
+        create_shape = {seqlen, nh * dh};
+        auto q_proj = tensorCreate(create_shape.data(), 2, model->meta.dtype, device_type, device_id);
+
+        create_shape = {seqlen, dkvh};
+        auto k_proj = tensorCreate(create_shape.data(), 2, model->meta.dtype, device_type, device_id);
         //transformer
         for(size_t i = 0; i < nlayer; i++){
             LOG(std::string("layer ") + std::to_string(i) + "/" + std::to_string(nlayer -1));
             /*
                 normalization
             */
-            auto attn_norm = tensorCreate(create_shape.data(), 2, model->meta.dtype, device_type, device_id);
             llaisysRmsNorm(attn_norm, input_embed, model->weights->attn_norm_w[i], eps);
-            // LOG("attn_norm");
-            // tensorDebug(attn_norm);
 
             /*
                 attention 
             */
             //q_proj
-            auto q_proj = tensorCreate(create_shape.data(), 2, model->meta.dtype, device_type, device_id);
+            create_shape = {seqlen, nh * dh};
+            q_proj = tensorView(q_proj, create_shape.data(), 2);
             llaisysLinear(q_proj, attn_norm, model->weights->attn_q_w[i], model->weights->attn_q_b[i]);
-            // LOG("q_proj");
-            // tensorDebug(q_proj);
 
             //q_rope
             create_shape = {seqlen, nh, dh};
             q_proj = tensorView(q_proj, create_shape.data(), 3);
-            auto q_rope = tensorCreate(create_shape.data(), 3, model->meta.dtype, device_type, device_id);
             llaisysROPE(q_rope, q_proj, pos_ids, theta);
-            // LOG("q_rope");
-            // tensorDebug(q_rope);
 
             //k_proj
             create_shape = {seqlen, dkvh};
-            auto k_proj = tensorCreate(create_shape.data(), 2, model->meta.dtype, device_type, device_id);
+            k_proj = tensorView(k_proj, create_shape.data(), 2);
             llaisysLinear(k_proj, attn_norm, model->weights->attn_k_w[i], model->weights->attn_k_b[i]);
-            // LOG("k_proj");
-            // tensorDebug(k_proj);
 
             //k_rope
             create_shape = {seqlen, nkvh, dh};
-             k_proj = tensorView(k_proj, create_shape.data(), 3);
+            k_proj = tensorView(k_proj, create_shape.data(), 3);
             auto k_rope = tensorSlice(k_cache[i], 0, past_len, curlen);
             llaisysROPE(k_rope, k_proj, pos_ids, theta);
-            // LOG("k_rope");
-            // tensorDebug(k_rope);
 
             //v_proj in_place
             create_shape = {seqlen, dkvh};
             auto v_proj = tensorView(tensorSlice(v_cache[i], 0, past_len, curlen), create_shape.data(), 2);
             llaisysLinear(v_proj, attn_norm, model->weights->attn_v_w[i], model->weights->attn_v_b[i]);
-            // LOG("v_proj");
-            // tensorDebug(v_proj);
-
+            
             //self attention
-            create_shape = {seqlen, nh, dh};
-            auto attn_val = tensorCreate(create_shape.data(), 3, model->meta.dtype, device_type, device_id);
-
             auto attn_k = tensorSlice(k_cache[i], 0, 0, curlen);
             auto attn_v = tensorSlice(v_cache[i], 0, 0, curlen);
 
             llaisysSelfAttention(attn_val, q_rope, attn_k, attn_v, scale);
-            // LOG("self_attention");
-            // tensorDebug(attn_out);
 
 
-//o_proj
-             create_shape = {seqlen, hs};
-            auto o_proj = tensorCreate(create_shape.data(), 2, model->meta.dtype, device_type, device_id);
+            //o_proj
+            create_shape = {seqlen, hs};
             attn_val = tensorView(attn_val, create_shape.data(), 2);
-            // LOG("attn_val");
-            // tensorDebug(attn_val);
+
             llaisysLinear(o_proj, attn_val, model->weights->attn_o_w[i], nullptr);
-            // LOG("o_proj");
-            // tensorDebug(o_proj);
 
             //residual connection
-            create_shape = {seqlen, hs};
-            auto mlp_layer = tensorCreate(create_shape.data(), 2, model->meta.dtype, device_type, device_id);
             llaisysAdd(mlp_layer, input_embed, o_proj);
-            // LOG("mlp_layer");
 
             //mlp_norm
-            create_shape = {seqlen, hs};
-            auto mlp_norm = tensorCreate(create_shape.data(), 2, model->meta.dtype, device_type, device_id);
             llaisysRmsNorm(mlp_norm, mlp_layer, model->weights->mlp_norm_w[i], eps);
-            // LOG("mlp_norm");
-            // tensorDebug(mlp_norm);
-
             /*
                 mlp
             */
 
             //mlp_gate
-            create_shape = {seqlen, di};
-            auto mlp_gate = tensorCreate(create_shape.data(), 2, model->meta.dtype, device_type, device_id);
             llaisysLinear(mlp_gate, mlp_norm, model->weights->mlp_gate_w[i], nullptr);
-            // LOG("mlp_gate");
-            // tensorDebug(mlp_gate);
 
-             //mlp_up
-            create_shape = {seqlen, di};
-            auto mlp_up = tensorCreate(create_shape.data(), 2, model->meta.dtype, device_type, device_id);
+            //mlp_up
             llaisysLinear(mlp_up, mlp_norm, model->weights->mlp_up_w[i], nullptr);
-            // LOG("mlp_up");
-            // tensorDebug(mlp_up);
+            
 
              //mlp_swiglu
-            create_shape = {seqlen, di};
-            auto mlp_swiglu = tensorCreate(create_shape.data(), 2, model->meta.dtype, device_type, device_id);
             llaisysSwiGLU(mlp_swiglu, mlp_gate, mlp_up);
-            // LOG("mlp_swiglu");
-            // tensorDebug(mlp_swiglu);
+            
 
-//mlp_down
-             create_shape = {seqlen, hs};
-            auto mlp_down = tensorCreate(create_shape.data(), 2, model->meta.dtype, device_type, device_id);
+            //mlp_down
             llaisysLinear(mlp_down, mlp_swiglu, model->weights->mlp_down_w[i], nullptr);
-            // LOG("mlp_down");
-            // tensorDebug(mlp_down);
 
             //residual connection
-             llaisysAdd(input_embed, mlp_layer, mlp_down);
-            // LOG("residual connection");
-            // tensorDebug(mlp_layer);
-
-            tensorDestroy(attn_norm);
-            tensorDestroy(q_proj);
-            tensorDestroy(k_proj);
-            tensorDestroy(v_proj);
-            tensorDestroy(attn_val);
-            tensorDestroy(o_proj);
-            tensorDestroy(mlp_layer);
-            tensorDestroy(mlp_norm);
-            tensorDestroy(mlp_gate);
-            tensorDestroy(mlp_up);
-            tensorDestroy(mlp_swiglu);
-            tensorDestroy(mlp_down);
+            llaisysAdd(input_embed, mlp_layer, mlp_down);
+            
+            // tensorDestroy(v_proj);
         }
+        tensorDestroy(attn_norm);
+        tensorDestroy(q_proj);
+        tensorDestroy(k_proj);
+        // tensorDestroy(v_proj);
+        tensorDestroy(attn_val);
+        tensorDestroy(o_proj);
+        tensorDestroy(mlp_layer);
+        tensorDestroy(mlp_norm);
+        tensorDestroy(mlp_gate);
+        tensorDestroy(mlp_up);
+        tensorDestroy(mlp_swiglu);
+        tensorDestroy(mlp_down);
 
         /*
             output

@@ -104,15 +104,12 @@ class Qwen2:
             state_dict["model.norm.weight"].data_ptr(),
         )
 
-        # refernce:https://github.com/liulog/llaisys/blob/main/python/llaisys/models/qwen2.py
+        # refernce something of https://github.com/liulog/llaisys/blob/main/python/llaisys/models/qwen2.py
         def load_layer_array(field_name, base_name):
             arr_ptr = getattr(self.weights.contents, field_name)
             arr_type = llaisysTensor_t * self.meta.nlayer
             arr = cast(arr_ptr, POINTER(arr_type)).contents
-
-            for i in range(self.meta.nlayer):
-                tensor_name = f"model.layers.{i}.{base_name}"
-                LIB_LLAISYS.tensorLoad(arr[i], state_dict[tensor_name].data_ptr())
+            {LIB_LLAISYS.tensorLoad(arr[i], state_dict[f"model.layers.{i}.{base_name}"].data_ptr())for i in range(self.meta.nlayer)}
 
         load_layer_array("attn_norm_w", "input_layernorm.weight")
         load_layer_array("attn_q_w", "self_attn.q_proj.weight")
@@ -127,9 +124,6 @@ class Qwen2:
         load_layer_array("mlp_gate_w", "mlp.gate_proj.weight")
         load_layer_array("mlp_up_w", "mlp.up_proj.weight")
         load_layer_array("mlp_down_w", "mlp.down_proj.weight")
-
-        # weights_to_print = LIB_LLAISYS.llaisysQwen2ModelWeights(self.model)
-        # logger.info(weights_to_print)
 
     def generate(
         self,
