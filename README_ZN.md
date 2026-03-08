@@ -25,6 +25,19 @@ LLAISYS（Let's Learn AI SYStem）是一个教育项目，旨在为新手和未�
 
 - `\test`：导入llaisys python包的Python测试文件。
 
+## 快速运行测试
+
+可以使用 `scripts/run_all_tests.sh` 来编译（使用当前 xmake 配置）并依次
+运行核心 CPU 测试：
+
+```bash
+./scripts/run_all_tests.sh              # 默认启用 OpenMP
+OPENMP_FLAG=n ./scripts/run_all_tests.sh  # 关闭 OpenMP 再运行
+```
+
+脚本会按顺序运行 `test/test_tensor.py`、`test/ops/linear.py` 以及
+`test/test_runtime.py --device cpu`。
+
 ## 作业 #0：入门
 
 ### 任务-0.1 安装必备组件

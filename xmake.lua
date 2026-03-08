@@ -21,6 +21,7 @@ function llaisys_add_openmp_compile_flags()
     end
     if is_plat("windows") then
         add_cxflags("/openmp", {force = true})
+        add_cxflags("/openmp:experimental", {force = true})
     else
         add_cxflags("-fopenmp", {force = true})
     end
@@ -33,6 +34,8 @@ function llaisys_add_openmp_link_flags()
     if is_plat("windows") then
         add_ldflags("/openmp", {force = true})
         add_shflags("/openmp", {force = true})
+        add_ldflags("/openmp:experimental", {force = true})
+        add_shflags("/openmp:experimental", {force = true})
     else
         add_ldflags("-fopenmp", {force = true})
         add_shflags("-fopenmp", {force = true})

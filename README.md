@@ -25,6 +25,19 @@ LLAISYS (Let's Learn AI SYStem) is an educational project that aims to provide a
 
 - `\test`: Python test files that import llaisys python package.
 
+## Running Tests Quickly
+
+Use `scripts/run_all_tests.sh` to build the native library (respecting the
+current `xmake` configuration) and run the key CPU tests:
+
+```bash
+./scripts/run_all_tests.sh              # default builds with OpenMP
+OPENMP_FLAG=n ./scripts/run_all_tests.sh  # disable OpenMP before running
+```
+
+The script executes `test/test_tensor.py`, `test/ops/linear.py`, and
+`test/test_runtime.py --device cpu` in sequence.
+
 ## Assignment #0: Getting Started
 
 ### Task-0.1 Install Prerequisites
