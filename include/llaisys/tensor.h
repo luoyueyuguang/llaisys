@@ -3,7 +3,7 @@
 
 #include "../llaisys.h"
 
-__C {
+LLAISYS_EXTERN_BEGIN
     typedef struct LlaisysTensor *llaisysTensor_t;
 
     __export llaisysTensor_t tensorCreate(
@@ -63,6 +63,6 @@ __C {
         size_t dim,
         size_t start,
         size_t end);
-}
+LLAISYS_EXTERN_END
 
 #endif // LLAISYS_TENSOR_H

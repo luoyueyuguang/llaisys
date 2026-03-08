@@ -347,6 +347,18 @@ There are several libraries that can help you optimize your operators for CPU. L
 
 Optimize your implementation with any methods you like and report your performance improvement.
 
+### Implementation notes
+
+- Toggle OpenMP support via `xmake f --openmp={y|n}` (default: `y`). The flag
+  controls whether CPU kernels are compiled with `-fopenmp`/`/openmp` and is
+  picked up automatically by the Python tests after `xmake install`.
+- The AVX/blocked kernels now respect row-major layouts and keep the bias terms
+  that were previously dropped on that path. This fixes the accuracy gap that
+  showed up during profiling.
+- `scripts/profile_linear.py` provides a reproducible micro-benchmark for the
+  linear operator. See `projects/PROJECT1.md` for the full report and sample
+  numbers comparing the OpenMP and non-OpenMP builds.
+
 ## Project #2: Intigrate CUDA into LLAISYS
 
 This project does not depend on **Project #1**. You should choose two CUDA/CUDA-ish hardware platforms from Nvidia, Iluvatar, Metax, and Moore Threads.

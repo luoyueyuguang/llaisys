@@ -23,7 +23,7 @@
 
 //实现Qwen2的api
 
-__C{
+LLAISYS_EXTERN_BEGIN
     struct LlaisysQwen2Model{
         LlaisysQwen2Meta meta;
         LlaisysQwen2Weights* weights;
@@ -411,5 +411,4 @@ __C{
 
         return token_id;
     }
-}
-
+LLAISYS_EXTERN_END

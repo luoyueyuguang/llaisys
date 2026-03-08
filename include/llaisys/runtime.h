@@ -3,7 +3,7 @@
 
 #include "../llaisys.h"
 
-__C {
+LLAISYS_EXTERN_BEGIN
     // Runtime API Functions
     // Device
     typedef int (*get_device_count_api)();
@@ -42,6 +42,6 @@ __C {
 
     // Llaisys API for switching device context
     __export void llaisysSetContextRuntime(llaisysDeviceType_t, int);
-}
+LLAISYS_EXTERN_END
 
 #endif // LLAISYS_RUNTIME_H

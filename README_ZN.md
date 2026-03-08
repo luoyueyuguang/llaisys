@@ -346,6 +346,16 @@ SIMD（单指令多数据）是一类可以在单条指令中对多个数据元�
 
 用任何你喜欢的方法优化你的推理实现，并报告性能提升情况。
 
+### 实现说明
+
+- 现在可以通过 `xmake f --openmp={y|n}`（默认 `y`）切换 OpenMP 支持，CPU
+  算子会自动带上 `-fopenmp` / `/openmp` 编译参数，并在 `xmake install`
+  后被 Python 测试使用。
+- 修复了 AVX/分块内核对行优先布局的处理逻辑，并保证在该路径下
+  bias 不会被覆盖，解决了之前 profiling 看到的数值偏差。
+- 新增 `scripts/profile_linear.py` 方便复现线性算子的 micro-benchmark，
+  详细的运行方式和对比数据见 `projects/PROJECT1.md`。
+
 ## 项目#2：在 LLAISYS 中集成 CUDA，适配两款CUDA或类CUDA平台(以下统称CUDA)
 
 这个项目不依赖 ``项目#1``。需要选择 Nvidia、天数、摩尔、沐曦中的至少两款平台。

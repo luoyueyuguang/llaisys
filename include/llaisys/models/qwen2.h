@@ -10,7 +10,7 @@
 
 //#define DEBUG 1
 
-__C {
+LLAISYS_EXTERN_BEGIN
     struct LlaisysQwen2Meta {
         llaisysDataType_t dtype;
         size_t nlayer, hs, nh, nkvh, dh, di, maxseq, voc;
@@ -47,5 +47,5 @@ __C {
 
     // reference something of https://github.com/zebra-uestc/llaisys/blob/master/src/llaisys/models/qwen2.cc
     __export int64_t llaisysQwen2ModelInfer(struct LlaisysQwen2Model * model, int64_t * token_ids, size_t ntoken, size_t past_len);
-}
+LLAISYS_EXTERN_END
 #endif // LLAISYS_MODELS_QWEN2_H

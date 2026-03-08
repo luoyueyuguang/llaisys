@@ -3,8 +3,8 @@
 
 #include "../tensor/tensor.hpp"
 
-__C {
+LLAISYS_EXTERN_BEGIN
     typedef struct LlaisysTensor {
         llaisys::tensor_t tensor;
     } LlaisysTensor;
-}
+LLAISYS_EXTERN_END

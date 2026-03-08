@@ -3,16 +3,46 @@ set_encodings("utf-8")
 
 add_includedirs("include")
 
--- CPU --
-includes("xmake/cpu.lua")
-
--- NVIDIA --
 option("nv-gpu")
     set_default(false)
     set_showmenu(true)
     set_description("Whether to compile implementations for Nvidia GPU")
 option_end()
 
+option("openmp")
+    set_default(true)
+    set_showmenu(true)
+    set_description("Enable OpenMP when building CPU operators")
+option_end()
+
+function llaisys_add_openmp_compile_flags()
+    if not has_config("openmp") then
+        return
+    end
+    if is_plat("windows") then
+        add_cxflags("/openmp", {force = true})
+    else
+        add_cxflags("-fopenmp", {force = true})
+    end
+end
+
+function llaisys_add_openmp_link_flags()
+    if not has_config("openmp") then
+        return
+    end
+    if is_plat("windows") then
+        add_ldflags("/openmp", {force = true})
+        add_shflags("/openmp", {force = true})
+    else
+        add_ldflags("-fopenmp", {force = true})
+        add_shflags("-fopenmp", {force = true})
+    end
+end
+
+-- CPU --
+includes("xmake/cpu.lua")
+
+-- NVIDIA --
 if has_config("nv-gpu") then
     add_defines("ENABLE_NVIDIA_API")
     includes("xmake/nvidia.lua")
@@ -108,6 +138,9 @@ target("llaisys")
     add_files("src/llaisys/*.cc")
     add_files("src/llaisys/models/*.cc")
     set_installdir(".")
+
+    llaisys_add_openmp_compile_flags()
+    llaisys_add_openmp_link_flags()
 
     
     after_install(function (target)

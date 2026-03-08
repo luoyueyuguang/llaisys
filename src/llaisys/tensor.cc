@@ -2,7 +2,7 @@
 
 #include <vector>
 
-__C {
+LLAISYS_EXTERN_BEGIN
     llaisysTensor_t tensorCreate(
         size_t * shape,
         size_t ndim,
@@ -93,4 +93,4 @@ __C {
         size_t end) {
         return new LlaisysTensor{tensor->tensor->slice(dim, start, end)};
     }
-}
+LLAISYS_EXTERN_END

@@ -24,6 +24,7 @@ target("llaisys-ops-cpu")
 
     add_files("../src/ops/*/cpu/*.cpp")
 
+    llaisys_add_openmp_compile_flags()
+
     on_install(function (target) end)
 target_end()
-
